@@ -29,6 +29,4 @@ if(NOT MSVC)
 endif()
 
 include_directories(include)
-
-add_subdirectory(src)
 add_subdirectory(tests)
