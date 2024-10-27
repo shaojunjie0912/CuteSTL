@@ -1,9 +1,12 @@
 #pragma once
 
+#if __cplusplus >= 202002L
 #include <concepts>
+#endif
 #include <cstdio>
 #include <iostream>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -63,8 +66,13 @@ public:
 
     T& operator*() const { return *ptr_; }
 
+#if __cplusplus >= 202002L
     template <typename U, typename UDeleter>
-        requires(std::convertible_to<U*, T*>)  // C++20
+        requires(std::convertible_to<U*, T*>)  // C++20 ->
+#else
+    template <typename U, typename UDeleter,
+              std::enable_if_t<std::is_convertible_v<U*, T*>, int> = 0>  // C++11 ->
+#endif
     UniquePtr(UniquePtr<U, UDeleter> other) {
         ptr_ = std::exchange(other.ptr_, nullptr);
     }
