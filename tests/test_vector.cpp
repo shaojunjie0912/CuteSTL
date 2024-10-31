@@ -25,6 +25,13 @@ public:
 
     explicit Vector(std::size_t size) : data_(new T[size]), size_(size), capacity_(size) {}
 
+    Vector(std::size_t size, T value) {
+        data_ = new T[size];
+        for (std::size_t i{0}; i < size; ++i) {
+            data_[i] = value;
+        }
+    }
+
     Vector(std::initializer_list<T> ini_list)
         : data_(new T[ini_list.size()]), size_(ini_list.size()) {
         T* begin = data_;
