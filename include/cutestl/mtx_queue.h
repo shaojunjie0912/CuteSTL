@@ -10,6 +10,13 @@
 // 线程安全的有锁队列模板类
 template <typename T, typename Queue = std::queue<T>>
 class MtxQueue {
+private:
+    Queue queue_;
+    std::mutex mtx_;
+    std::condition_variable cv_notfull_;   // 队列未满条件变量
+    std::condition_variable cv_notempty_;  // 队列非空条件变量
+    std::size_t limit_;                    // 最大允许堆积的元素数量
+
 public:
     // -1转无符号最大数
     // 指定最大允许堆积的元素数量，超过该数量后会阻塞
@@ -19,9 +26,20 @@ public:
     // 向队列中推入元素
     void Push(T value) {
         std::unique_lock lk{mtx_};
-        cv_notfull_.wait(lk, [this] { return queue_.size() <= limit_; });
+        cv_notfull_.wait(lk, [this] { return queue_.size() < limit_; });
         queue_.push(std::move(value));
         cv_notempty_.notify_one();  // 通知可取
+    }
+
+    // 尝试向队列中推入元素，不阻塞
+    bool TryPush(T value) {
+        std::unique_lock lk{mtx_};
+        if (queue_.size() >= limit_) {
+            return false;
+        }
+        queue_.push(std::move(value));
+        cv_notempty_.notify_one();
+        return true;
     }
 
     // 从队列中取出元素(阻塞版本)
@@ -74,11 +92,4 @@ public:
         std::unique_lock lk{mtx_};
         return queue_.empty();
     }
-
-private:
-    Queue queue_;
-    std::mutex mtx_;
-    std::condition_variable cv_notfull_;   // 队列未满条件变量
-    std::condition_variable cv_notempty_;  // 队列非空条件变量
-    std::size_t limit_;                    // 最大允许堆积的元素数量
 };
