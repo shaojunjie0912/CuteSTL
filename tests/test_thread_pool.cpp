@@ -24,7 +24,7 @@ public:
     }
 
     ~ThreadPool() {
-        stop_ = false;
+        stop_ = true;
         for (auto &t : thread_pool_) {
             t.join();
         }
