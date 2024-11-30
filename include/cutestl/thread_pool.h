@@ -40,7 +40,7 @@ public:
         using RT = std::invoke_result_t<F, Args...>;
         auto task = std::make_shared<std::packaged_task<RT(Args...)>>(
             [&] { std::forward<F>(f)(std::forward<Args>(args)...); });
-        task_queue_.Push([task = std::move(task)] { (*task)(); });
+        task_queue_.Push([&task] { (*task)(); });
         return task->get_future();
     }
 
