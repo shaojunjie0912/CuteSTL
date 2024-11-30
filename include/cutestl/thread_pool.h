@@ -15,7 +15,7 @@ public:
         : stop_(false) {
         for (std::size_t i{0}; i < num_threads; ++i) {
             thread_pool_.emplace_back([this] {
-                while (!stop_) {
+                while (!stop_.load()) {
                     auto task = task_queue_.Pop();
                     task();
                 }
@@ -24,7 +24,7 @@ public:
     }
 
     ~ThreadPool() {
-        stop_ = true;
+        stop_.store(true);
         for (auto &t : thread_pool_) {
             t.join();
         }
@@ -40,9 +40,8 @@ public:
         using RT = std::invoke_result_t<F, Args...>;
         auto task = std::make_shared<std::packaged_task<RT(Args...)>>(
             [&] { std::forward<F>(f)(std::forward<Args>(args)...); });
-        std::future<RT> res = task->get_future();
         task_queue_.Push([task = std::move(task)] { (*task)(); });
-        return res;
+        return task->get_future();
     }
 
 private:
