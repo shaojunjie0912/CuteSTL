@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <future>
@@ -21,13 +20,15 @@ public:
         : stop_(false) {
         for (std::size_t i{0}; i < num_threads; ++i) {
             thread_pool_.emplace_back([this] {
-                while (!stop_.load()) {
+                while (true) {
                     std::function<void()> task;
                     // {} 防止 task() 耗时使得锁无法释放
                     {
                         std::unique_lock lk{mtx_};
-                        cv_.wait(lk, [this] { return !task_queue_.empty() || stop_.load(); });
-                        if (stop_.load()) {
+                        // 条件顺序
+                        cv_.wait(lk, [this] { return stop_ || !task_queue_.empty(); });
+                        // 条件组合
+                        if (stop_ && task_queue_.empty()) {
                             return;
                         }
                         task = task_queue_.front();
@@ -41,7 +42,10 @@ public:
     }
 
     ~MtxThreadPool() {
-        stop_.store(true);
+        {
+            std::unique_lock lk{mtx_};
+            stop_ = true;
+        }
         cv_.notify_all();
         for (auto &t : thread_pool_) {
             if (t.joinable()) {
@@ -62,8 +66,10 @@ public:
         auto task = std::make_shared<std::packaged_task<RT(Args...)>>(
             [&] { std::forward<F>(f)(std::forward<Args>(args)...); });
         std::future<RT> res = task->get_future();
-        std::unique_lock lk{mtx_};
-        task_queue_.push([task = std::move(task)] { (*task)(); });
+        {
+            std::unique_lock lk{mtx_};
+            task_queue_.push([task = std::move(task)] { (*task)(); });
+        }
         cv_.notify_one();
         return res;
     }
@@ -71,7 +77,7 @@ public:
 private:
     std::queue<std::function<void()>> task_queue_;  // 任务队列
     std::vector<std::thread> thread_pool_;          // 线程池
-    std::atomic<bool> stop_;                        // 线程池停止标志
+    bool stop_;                                     // 线程池停止标志
     std::mutex mtx_;                                // 互斥体
     std::condition_variable cv_;                    // 条件变量
 };
