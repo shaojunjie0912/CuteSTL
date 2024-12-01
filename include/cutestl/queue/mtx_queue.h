@@ -1,11 +1,15 @@
+// 基于互斥锁的线程安全队列
+
 #pragma once
 
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
 #include <mutex>
-#include <optional>
-#include <queue>
+#include <optional>  // TODO: cutestl::Optional
+#include <queue>     // TODO: cutestl::Queue
+
+namespace cutestl {
 
 // 线程安全的有锁队列模板类
 template <typename T, typename Queue = std::queue<T>>
@@ -93,3 +97,5 @@ public:
         return queue_.empty();
     }
 };
+
+}  // namespace cutestl
