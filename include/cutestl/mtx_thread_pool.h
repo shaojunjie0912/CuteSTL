@@ -63,12 +63,13 @@ public:
     template <typename F, typename... Args>
     auto Submit(F &&f, Args &&...args) {
         using RT = std::invoke_result_t<F, Args...>;
+        // 智能指针管理 task 生命周期
         auto task = std::make_shared<std::packaged_task<RT(Args...)>>(
             [&] { std::forward<F>(f)(std::forward<Args>(args)...); });
         std::future<RT> res = task->get_future();
         {
             std::unique_lock lk{mtx_};
-            task_queue_.push([task = std::move(task)] { (*task)(); });
+            task_queue_.emplace([task = std::move(task)] { (*task)(); });
         }
         cv_.notify_one();
         return res;
