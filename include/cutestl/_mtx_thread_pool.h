@@ -3,7 +3,6 @@
 #pragma once
 
 #include <condition_variable>
-#include <functional>
 #include <future>
 #include <iostream>
 #include <memory>
@@ -11,6 +10,8 @@
 #include <queue>
 #include <thread>
 #include <type_traits>
+
+#include "functional.h"
 
 namespace cutestl {
 
