@@ -1,3 +1,5 @@
+#pragma once
+
 // 普通队列
 
 #include <deque>
