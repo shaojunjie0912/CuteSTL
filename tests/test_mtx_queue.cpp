@@ -1,5 +1,4 @@
-#include <cutestl/queue.h>
-
+#include <cutestl/queue.hpp>
 #include <functional>
 #include <iostream>
 

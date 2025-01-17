@@ -11,8 +11,6 @@
 #include <thread>
 #include <type_traits>
 
-#include "functional.h"
-
 namespace cutestl {
 
 class MtxThreadPool {
