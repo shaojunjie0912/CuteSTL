@@ -1,5 +1,4 @@
-#include <cutestl/functional.h>
-
+#include <cutestl/functional.hpp>
 #include <iostream>
 #include <memory>
 #include <print>
