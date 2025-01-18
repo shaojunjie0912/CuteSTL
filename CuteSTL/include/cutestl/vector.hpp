@@ -24,13 +24,15 @@ public:
     using const_iterator = const iterator;
 
 private:
-    T* data_;
+    value_type* data_;
     size_type size_;
     size_type capacity_;
 
 public:
-    T* Allocate(size_type n) { return static_cast<T*>(operator new(n * sizeof(value_type))); }
-    void Deallocate(T* p) { operator delete(p); }
+    value_type* Allocate(size_type n) {
+        return static_cast<value_type*>(operator new(n * sizeof(value_type)));
+    }
+    void Deallocate(value_type* p) { operator delete(p); }
 
 public:
     Vector() : data_(nullptr), size_(0), capacity_(0) {}
@@ -58,18 +60,17 @@ public:
         }
     }
 
-    Vector(Vector const& other) : data_(new T[other.size_]), size_(other.size_) {
-        fmt::println("拷贝构造");
-        std::copy(other.data_, other.data_ + size_, data_);
-    }
+    // NOTE: 使用委托构造简略写法
+    Vector(Vector const& other) : Vector(other.begin(), other.end()) { fmt::println("拷贝构造"); }
 
     Vector& operator=(Vector const& other) {
         fmt::println("拷贝赋值");
         if (this != &other) {
-            this->~Vector();
-            data_ = new T[other.size_];
-            size_ = other.size_;
-            std::copy(other.data_, other.data_ + size_, data_);
+            if (other.size_ > capacity_) {
+                Vector tmp{other};
+                this->Swap(tmp);  // [ ]: Maybe 是高效 Swap?
+            } else {
+            }
         }
         return *this;
     }
@@ -78,8 +79,10 @@ public:
         fmt::println("移动构造");
         data_ = other.data_;
         size_ = other.size_;
+        capacity_ = other.capacity_;
         other.data_ = nullptr;
         other.size_ = 0;
+        other.capacity_ = 0;
     }
 
     Vector& operator=(Vector&& other) noexcept {
@@ -88,8 +91,10 @@ public:
             this->~Vector();
             data_ = other.data_;
             size_ = other.size_;
+            capacity_ = other.capacity_;
             other.data_ = nullptr;
             other.size_ = 0;
+            other.capacity_ = 0;
         }
         return *this;
     }
@@ -104,8 +109,8 @@ public:
     }
 
 public:
-    T& operator[](size_type index) { return *(data_ + index); }
-    T const& operator[](size_type index) const { return *(data_ + index); }
+    // T& operator[](size_type index) { return *(data_ + index); }
+    // T const& operator[](size_type index) const { return *(data_ + index); }
 
 public:
     void Clear() {
@@ -114,10 +119,28 @@ public:
         size_ = 0;
     }
 
+    void Swap(Vector& other) noexcept {
+        std::swap(data_, other.data_);
+        std::swap(size_, other.size_);
+        std::swap(capacity_, other.capacity_);
+    }
+
+    void Reserve(size_type n) {
+        if (capacity_ >= n) {
+            return;
+        }
+        iterator new_data{Allocate(n)};
+        std::uninitialized_copy(begin(), end(), new_data);
+        std::destroy(begin(), end());
+        Deallocate(data_);
+        data_ = new_data;
+        capacity_ = n;
+    }
+
 public:
     size_type size() const { return size_; }
 
-    T* data() { return data_; }
+    value_type* data() { return data_; }
 
     size_type capacity() const { return capacity_; }
 

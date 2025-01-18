@@ -9,9 +9,10 @@ using namespace cutestl;
 int main() {
     using StrVec = cutestl::Vector<std::string>;
     // std::vector std_vec(4, "std");
-    StrVec vec2(3, "ds");
-    vec2.Print();
-    StrVec vec3{vec2.begin(), vec2.end()};
-    vec3.Print();
+    StrVec vec1(2, "str");
+    vec1.Print();
+    StrVec vec2(3, "aaa");
+    vec1 = vec2;
+    vec1.Print();
     return 0;
 }
