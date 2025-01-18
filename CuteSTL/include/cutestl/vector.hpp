@@ -1,149 +1,114 @@
 #pragma once
 
+#include <fmt/core.h>
+
 #include <algorithm>
 #include <cstddef>
-#include <cstdio>
-#include <cstring>
 #include <initializer_list>
-#include <iostream>
-#include <iterator>
-#include <stdexcept>
 #include <utility>
 
 namespace cutestl {
 
 template <typename T>
-struct Vector {
+class Vector {
+public:
+    using value_type = T;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+    using reference = value_type&;
+    using const_reference = value_type const&;
+    using iterator = value_type*;
+    using const_iterator = iterator const*;
+
 private:
     T* data_;
-    std::size_t size_;
-    std::size_t capacity_;
+    size_type size_;
+    size_type capacity_;
 
 public:
-    Vector() : data_(nullptr), size_(0), capacity_(0) {}
+    T* Allocate(size_type n) { return static_cast<T*>(operator new(n * sizeof(value_type))); }
+    void Deallocate(T* p) { operator delete(p); }
 
-    explicit Vector(std::size_t size) : data_(new T[size]), size_(size), capacity_(size) {}
+public:
+    explicit Vector(size_type size) : data_(new T[size]{}), size_(size) {}
 
-    Vector(std::size_t size, T value) {
-        data_ = new T[size];
-        for (std::size_t i{0}; i < size; ++i) {
-            data_[i] = value;
+    Vector(size_type size, T init_val) : data_(new T[size]), size_(size) {
+        for (size_type i{0}; i < size; ++i) {
+            data_[i] = std::move(init_val);
         }
     }
 
-    Vector(std::initializer_list<T> ini_list)
-        : data_(new T[ini_list.size()]), size_(ini_list.size()) {
-        T* begin = data_;
-        for (auto const& val : ini_list) {
-            *begin = val;
-            begin += sizeof(T);
+    Vector(std::initializer_list<T> init_list)
+        : data_(new T[init_list.size()]), size_(init_list.size()) {
+        auto tmp{data_};
+        for (auto&& val : init_list) {
+            *(tmp++) = std::move(val);
         }
     }
 
-    Vector(Vector const& other) {
-        data_ = new T[other.size_];
-        size_ = other.size_;
-        memcpy(data_, other.data_, size_ * sizeof(T));
+    Vector(Vector const& other) : data_(new T[other.size_]), size_(other.size_) {
+        fmt::println("拷贝构造");
+        std::copy(other.data_, other.data_ + size_, data_);
     }
 
     Vector& operator=(Vector const& other) {
-        if (this == &other) {
-            return *this;
-        }
-        if (data_) {
-            delete[] data_;
-        }
-        size_ = other.size_;
-        if (size_ != 0) {
+        fmt::println("拷贝赋值");
+        if (this != &other) {
+            this->~Vector();
             data_ = new T[other.size_];
-            memcpy(data_, other.data_, size_ * sizeof(T));
+            size_ = other.size_;
+            std::copy(other.data_, other.data_ + size_, data_);
         }
         return *this;
     }
 
-    Vector(Vector&& other) {
-        data_ = std::exchange(other.data_, nullptr);
-        size_ = std::exchange(other.size_, 0);
+    Vector(Vector&& other) noexcept {
+        fmt::println("移动构造");
+        data_ = other.data_;
+        size_ = other.size_;
+        other.data_ = nullptr;
+        other.size_ = 0;
     }
 
-    Vector& operator=(Vector&& other) {
-        if (this == &other) {
-            return *this;
+    Vector& operator=(Vector&& other) noexcept {
+        fmt::println("移动赋值");
+        if (this != &other) {
+            this->~Vector();
+            data_ = other.data_;
+            size_ = other.size_;
+            other.data_ = nullptr;
+            other.size_ = 0;
         }
+        return *this;
+    }
+
+    ~Vector() {
         if (data_) {
-            delete[] data_;
-        }
-        data_ = std::exchange(other.data_, nullptr);
-        size_ = std::exchange(other.size_, 0);
-        return *this;
-    }
-
-    ~Vector() { delete[] data_; }
-
-public:
-    T& operator[](std::size_t i) {
-        // FIXME: 为什么不对
-        // return *(data_ + i * sizeof(T));
-        return data_[i];
-    }
-
-    T const& operator[](std::size_t i) const {
-        // return *(data_ + i * sizeof(T));
-        return data_[i];
-    }
-
-public:
-    T* Begin() { return data_; }
-
-    T* End() { return data_ + size_ * sizeof(T); }
-
-    std::size_t Size() const noexcept { return size_; }
-
-    std::size_t Capacity() const noexcept { return capacity_; }
-
-    void Reserve(std::size_t size) {}
-
-    void ShrinkToFit() {}
-
-    void Resize(std::size_t n) {
-        if (n == 0) {
             delete[] data_;
             data_ = nullptr;
-            size_ = 0;
-        } else {
-            T* data_tmp = data_;
-            std::size_t size_tmp = size_;
-            data_ = new T[n]{};  // 括号初始化(对于内置类型默认初始化即零初始化)
-            size_ = n;
-            if (data_tmp) {
-                memcpy(data_, data_tmp, std::min(size_tmp, n) * sizeof(T));
-                delete[] data_tmp;
-            }
         }
     }
 
+public:
+    T& operator[](size_type index) { return *(data_ + index); }
+    T const& operator[](size_type index) const { return *(data_ + index); }
+
+public:
+    size_type Size() const { return size_; }
     void Clear() {
         delete[] data_;
         data_ = nullptr;
         size_ = 0;
     }
+    T* Data() { return data_; }
 
-    T const& Front() const { return data_[0]; }
-    T& Front() { return data_[0]; }
-
-    T const& Back() const { return data_[size_ - 1]; }
-    T& Back() { return data_[size_ - 1]; }
-
-    void PushBack(T val) {
-        Resize(size_ + 1);
-        Back() = std::move(val);
-    }
-
-    void Erase(std::size_t i) {
-        for (std::size_t j = i; j < size_ - 1; ++j) {
-            data_[j] = std::move(data_[j + 1]);
+public:
+    void Print() const {
+        fmt::print("Vec[{}]: [ ", size_);
+        for (size_type i{0}; i < size_; ++i) {
+            fmt::print("{}, ", *(data_ + i));
         }
-        Resize(size_ - 1);
+        fmt::print("]\n");
     }
 };
 
