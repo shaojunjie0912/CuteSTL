@@ -8,11 +8,20 @@ using namespace cutestl;
 
 int main() {
     using StrVec = cutestl::Vector<std::string>;
-    // std::vector std_vec(4, "std");
-    StrVec vec1(2, "str");
-    vec1.Print();
-    StrVec vec2(3, "aaa");
-    vec1 = vec2;
-    vec1.Print();
+    std::vector<std::string> std_vec(4, "std");
+    StrVec vec1(3, "0");
+    StrVec vec2 = {"1", "2"};
+    vec2 = {"5", "6", "d"};
+    vec2.Print();
+    // vec1.Reserve(4);
+    // vec1.Insert(vec1.begin(), 2, "c");
+    // vec1.Print();
+    // vec1.Erase(vec1.begin(), vec1.begin() + 3);
+    // vec1.Print();
+    // vec1.PushBack("dasdsa");
+    // vec1.PushBack("dd");
+    // vec1.Print();
+    // vec1.PopBack();
+    // vec1.Print();
     return 0;
 }
