@@ -8,34 +8,39 @@
 #include <memory>
 #include <utility>
 
+#include "allocator.hpp"
+
 // [ ]: 思考: std::uninitialized_fill & copy > std::copy
+// NOTE: std::construct_at C++20 == placement new
 
 namespace cutestl {
 
-template <typename T>
+template <typename T, typename Alloc = Allocator<T>>
 class Vector {
 public:
     using value_type = T;
+    using allocator_type = Alloc;
     using size_type = std::size_t;
+    using pointer = T*;
+    using const_pointer = T const*;
     using difference_type = std::ptrdiff_t;
-    using reference = value_type&;
-    using const_reference = const value_type;
-    using iterator = value_type*;
-    using const_iterator = const iterator;
+    using reference = T&;
+    using const_reference = T const&;
+    using iterator = T*;
+    using const_iterator = T const*;
+    using reverse_iterator = std::reverse_iterator<T*>;
+    using const_reverse_iterator = std::reverse_iterator<T const*>;
 
 private:
-    value_type* start_;
-    value_type* finish_;
-    value_type* end_of_storage_;
+    value_type* start_;           // 指向第一个元素的指针
+    value_type* finish_;          // 指向最后一个元素的下一个位置
+    value_type* end_of_storage_;  // 指向内存空间的尾后位置
 
 public:
-    value_type* Allocate(size_type n) { return static_cast<value_type*>(operator new(n * sizeof(value_type))); }
-    void Deallocate(value_type* p) { operator delete(p); }
+    constexpr Vector() : start_(nullptr), finish_(nullptr), end_of_storage_(nullptr) {}
 
-public:
-    Vector() : start_(nullptr), finish_(nullptr), end_of_storage_(nullptr) {}
-
-    Vector(size_type n, T val) : start_(Allocate(n)), finish_(start_ + n), end_of_storage_(start_ + n) {
+    constexpr Vector(size_type n, T val)
+        : start_(Alloc::Allocate(n)), finish_(start_ + n), end_of_storage_(start_ + n) {
         // 1. 分配内存
         // 2. 构造对象
         std::uninitialized_fill(start_, finish_, val);
@@ -44,7 +49,7 @@ public:
     template <typename InputIt>
     Vector(InputIt first, InputIt last) {
         size_type n = std::distance(first, last);
-        start_ = Allocate(n);
+        start_ = Alloc::Allocate(n);
         std::uninitialized_copy(first, last, start_);
         finish_ = start_ + n;
         end_of_storage_ = start_ + n;
@@ -52,12 +57,10 @@ public:
 
     Vector(std::initializer_list<T> init_list) : Vector(init_list.begin(), init_list.end()) {}
 
-    // [ ]: 为什么析构函数必须是 noexcept?
-    // -> 如果出现异常则递归析构
     ~Vector() noexcept {
         if (start_) {
-            std::destroy(begin(), end());  // 1. 析构对象
-            Deallocate(start_);            // 2. 释放内存
+            std::destroy(start_, finish_);  // 1. 调用每个元素的析构函数
+            Alloc::Deallocate(start_);      // 2. 释放 start_ 指向的内存
         }
     }
 
@@ -103,7 +106,7 @@ public:
         fmt::println("移动赋值");
         if (this != &other) {
             std::destroy(begin(), end());
-            Deallocate(start_);
+            Alloc::Deallocate(start_);
             start_ = other.start_;
             finish_ = other.finish_;
             end_of_storage_ = other.end_of_storage_;
@@ -152,17 +155,17 @@ public:
         if (Capacity() >= n) {
             return;
         }
-        iterator new_start{Allocate(n)};
+        iterator new_start{Alloc::Allocate(n)};
         iterator new_finish{std::uninitialized_copy(begin(), end(), new_start)};
         std::destroy(start_, finish_);
-        Deallocate(start_);
+        Alloc::Deallocate(start_);
         start_ = new_start;
         finish_ = new_finish;
         end_of_storage_ = start_ + n;
     }
 
 public:
-    iterator Insert(iterator pos, value_type const& val) {
+    iterator Insert(const iterator pos, value_type const& val) {
         if (end_of_storage_ - finish_ > 0) {
             if (pos != finish_) {
                 std::construct_at(finish_, *(finish_ - 1));  // NOTE: 需要构造最后一个空位
@@ -177,14 +180,14 @@ public:
             }
         } else {
             size_type new_size = std::max(2 * Size(), Size() + 1);
-            iterator new_start{Allocate(new_size)};
+            iterator new_start{Alloc::Allocate(new_size)};
             iterator new_finish{std::uninitialized_move(start_, pos, new_start)};
             iterator ret{new_finish};
             std::construct_at(new_finish, val);
             ++new_finish;
             new_finish = std::uninitialized_move(pos, finish_, new_finish);
             std::destroy(start_, finish_);
-            Deallocate(start_);
+            Alloc::Deallocate(start_);
             start_ = new_start;
             finish_ = new_finish;
             end_of_storage_ = start_ + new_size;
@@ -193,10 +196,11 @@ public:
     }
 
     iterator Insert(iterator pos, value_type&& val) {
+        // 1. capacity 足够
         if (end_of_storage_ - finish_ > 0) {
             if (pos != finish_) {
-                std::construct_at(finish_, std::move(*(finish_ - 1)));  // NOTE: 需要构造最后一个空位
-                std::move_backward(pos, finish_ - 1, finish_);
+                std::construct_at(finish_, std::move(*(finish_ - 1)));  // 最后一个元素右移, 腾出一个空位
+                std::move_backward(pos, finish_ - 1, finish_);          // 移动剩余元素
                 *pos = std::move(val);
                 ++finish_;
                 return pos;
@@ -205,16 +209,18 @@ public:
                 ++finish_;
                 return pos;
             }
-        } else {
+        }
+        // 2. 没有 capacity
+        else {
             size_type new_size = std::max(2 * Size(), Size() + 1);
-            iterator new_start{Allocate(new_size)};
+            iterator new_start{Alloc::Allocate(new_size)};
             iterator new_finish{std::uninitialized_move(start_, pos, new_start)};
             iterator ret{new_finish};
             std::construct_at(new_finish, std::move(val));
             ++new_finish;
             new_finish = std::uninitialized_move(pos, finish_, new_finish);
             std::destroy(start_, finish_);
-            Deallocate(start_);
+            Alloc::Deallocate(start_);
             start_ = new_start;
             finish_ = new_finish;
             end_of_storage_ = start_ + new_size;
@@ -222,12 +228,11 @@ public:
         }
     }
 
-    // HACK: 核心! ⭐️
+    // ⭐ 核心! ️
     iterator Insert(iterator pos, size_type n, value_type const& val) {
         if (n == 0) {
             return pos;
         }
-        // NOTE: 此处 pos 为迭代器
         if (end_of_storage_ - finish_ > n) {
             size_type elemts_after = finish_ - pos;  // pos 和 end() 之间的元素个数
             if (elemts_after > n) {                  // 切分原数组
@@ -246,18 +251,28 @@ public:
         } else {
             // NOTE: MSVC: * 2; GCC: * 1.5
             size_type new_size = std::max(2 * Size(), Size() + n);
-            iterator new_start{Allocate(new_size)};
-            iterator new_finish{std::uninitialized_move(start_, pos, new_start)};
+            iterator new_start{Alloc::Allocate(new_size)};
+            iterator new_finish{std::uninitialized_move(start_, pos, new_start)};  // 1. 移动左边部分
             iterator ret{new_finish};
-            new_finish = std::uninitialized_fill_n(new_finish, n, val);
-            new_finish = std::uninitialized_move(pos, finish_, new_finish);
+            new_finish = std::uninitialized_fill_n(new_finish, n, val);      // 2. 填充中间部分
+            new_finish = std::uninitialized_move(pos, finish_, new_finish);  // 3. 移动右边部分
             std::destroy(start_, finish_);
-            Deallocate(start_);
+            Alloc::Deallocate(start_);
             start_ = new_start;
             finish_ = new_finish;
             end_of_storage_ = start_ + new_size;
             return ret;
         }
+    }
+
+    template <typename... Args>
+    iterator Emplace(iterator pos, Args&&... args) {
+        return Insert(pos, value_type{std::forward<Args>(args)...});
+    }
+
+    template <typename... Args>
+    iterator EmplaceBack(Args&&... args) {
+        return Insert(finish_, value_type{std::forward<Args>(args)...});
     }
 
     iterator Erase(iterator pos) { return Erase(pos, pos + 1); }
@@ -268,10 +283,6 @@ public:
         finish_ = new_finish;
         return first;
     }
-
-    void Resize(size_type n, value_type const& val) {}
-
-    void Resize(size_type n) {}
 
     void PushBack(value_type const& val) { Insert(finish_, val); }
 

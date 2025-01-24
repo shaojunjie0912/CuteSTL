@@ -6,22 +6,28 @@
 
 using namespace cutestl;
 
+struct A {
+    std::string name_;
+    int age_;
+};
+
 int main() {
-    using StrVec = cutestl::Vector<std::string>;
-    std::vector<std::string> std_vec(4, "std");
-    StrVec vec1(3, "0");
-    StrVec vec2 = {"1", "2"};
-    vec2 = {"5", "6", "d"};
-    vec2.Print();
-    // vec1.Reserve(4);
-    // vec1.Insert(vec1.begin(), 2, "c");
-    // vec1.Print();
-    // vec1.Erase(vec1.begin(), vec1.begin() + 3);
-    // vec1.Print();
-    // vec1.PushBack("dasdsa");
-    // vec1.PushBack("dd");
-    // vec1.Print();
-    // vec1.PopBack();
-    // vec1.Print();
+    using CuteAVec = cutestl::Vector<A>;
+    using StdAVec = std::vector<A>;
+    StdAVec std_a_vec{{"sjj", 23}, {"drr", 21}};
+    std_a_vec.emplace(std_a_vec.end(), "balala", 3);
+    std_a_vec.emplace(std_a_vec.begin() + 1, "notme", 4);
+    for (auto const& _ : std_a_vec) {
+        fmt::println("name = {}, age = {}\n", _.name_, _.age_);
+    }
+    fmt::println("===========================");
+    CuteAVec cute_a_vec{{"sjj", 23}, {"drr", 21}};
+    cute_a_vec.Emplace(cute_a_vec.end(), "balala", 3);
+    cute_a_vec.Emplace(cute_a_vec.begin() + 1, "notme", 4);
+    cute_a_vec.EmplaceBack("lastlast", 111);
+    for (auto const& _ : cute_a_vec) {
+        fmt::println("name = {}, age = {}\n", _.name_, _.age_);
+    }
+
     return 0;
 }
