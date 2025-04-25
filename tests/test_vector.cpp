@@ -1,18 +1,33 @@
 #include <fmt/core.h>
 
 #include <cutestl/vector.hpp>
+#include <string>
+#include <vector>
 
 using namespace cutestl;
 
+struct A {
+    std::string name_;
+    int age_;
+};
+
 int main() {
-    // Vector<int> v1{1, 2, 3};
-    Vector<int> v1(3);
-    for (std::size_t i{0}; i < v1.Size(); ++i) {
-        v1[i] = i;
-        // cout << v1[i] << " " << "\n";
-        fmt::print("{}\n", v1[i]);
+    using CuteAVec = cutestl::Vector<A>;
+    using StdAVec = std::vector<A>;
+    StdAVec std_a_vec{{"sjj", 23}, {"drr", 21}};
+    std_a_vec.emplace(std_a_vec.end(), "balala", 3);
+    std_a_vec.emplace(std_a_vec.begin() + 1, "notme", 4);
+    for (auto const& _ : std_a_vec) {
+        fmt::println("name = {}, age = {}\n", _.name_, _.age_);
     }
-    // cout << *v1.data_ << "\n";
-    // cout << *(v1.data_ + sizeof(int)) << "\n";
-    // cout << *(v1.data_ + 2 * sizeof(int)) << "\n";
+    fmt::println("===========================");
+    CuteAVec cute_a_vec{{"sjj", 23}, {"drr", 21}};
+    cute_a_vec.Emplace(cute_a_vec.end(), "balala", 3);
+    cute_a_vec.Emplace(cute_a_vec.begin() + 1, "notme", 4);
+    cute_a_vec.EmplaceBack("lastlast", 111);
+    for (auto const& _ : cute_a_vec) {
+        fmt::println("name = {}, age = {}\n", _.name_, _.age_);
+    }
+
+    return 0;
 }
