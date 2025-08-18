@@ -1,12 +1,16 @@
-#include <bits/stdc++.h>
-#include <fmt/core.h>
+#include <cutestl/list.hpp>
+#include <iostream>
 
-using fmt::println;
+using namespace std;
+using namespace cutestl;
 
 int main() {
-    std::list<char> std_ch_list{'a', 'b', 'c', 'd'};
-    // for (auto const& ch : std_ch_list) {
-    //     fmt::print("{} ", ch);
-    // }
-    return 0;
+    List<int> l;
+    for (int i = 1; i <= 3; ++i) {
+        l.Insert(l.Begin(), i);
+    }
+    l.Insert(++l.Begin(), 444);
+    auto it = l.Insert(--l.End(), 3, 1024);
+    l.Show();
+    std::cout << *(--it) << std::endl;
 }

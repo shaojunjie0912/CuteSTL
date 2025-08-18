@@ -21,25 +21,25 @@ public:
     using value_type = T;
     using allocator_type = Alloc;
     using size_type = std::size_t;
-    using pointer = T*;
-    using const_pointer = T const*;
+    using pointer = value_type*;
+    using const_pointer = value_type const*;
     using difference_type = std::ptrdiff_t;
-    using reference = T&;
-    using const_reference = T const&;
-    using iterator = T*;
-    using const_iterator = T const*;
-    using reverse_iterator = std::reverse_iterator<T*>;
-    using const_reverse_iterator = std::reverse_iterator<T const*>;
+    using reference = value_type&;
+    using const_reference = value_type const&;
+    using iterator = value_type*;
+    using const_iterator = value_type const*;
+    using reverse_iterator = std::reverse_iterator<value_type*>;
+    using const_reverse_iterator = std::reverse_iterator<value_type const*>;
 
 private:
-    value_type* start_;           // 指向第一个元素的指针
-    value_type* finish_;          // 指向最后一个元素的下一个位置
-    value_type* end_of_storage_;  // 指向内存空间的尾后位置
+    pointer start_;           // 指向第一个元素的指针
+    pointer finish_;          // 指向最后一个元素的下一个位置
+    pointer end_of_storage_;  // 指向内存空间的尾后位置
 
 public:
     constexpr Vector() : start_(nullptr), finish_(nullptr), end_of_storage_(nullptr) {}
 
-    constexpr Vector(size_type n, T val)
+    constexpr Vector(size_type n, value_type val)
         : start_(Alloc::Allocate(n)), finish_(start_ + n), end_of_storage_(start_ + n) {
         // 1. 分配内存
         // 2. 构造对象
@@ -55,7 +55,8 @@ public:
         end_of_storage_ = start_ + n;
     }
 
-    Vector(std::initializer_list<T> init_list) : Vector(init_list.begin(), init_list.end()) {}
+    Vector(std::initializer_list<value_type> init_list)
+        : Vector(init_list.begin(), init_list.end()) {}
 
     ~Vector() noexcept {
         if (start_) {
@@ -91,7 +92,8 @@ public:
             else {
                 if (other.Size() > Size()) {
                     std::copy(other.start_, other.start_ + Size(), start_);
-                    finish_ = std::uninitialized_copy(other.start_ + Size(), other.finish_, finish_);
+                    finish_ =
+                        std::uninitialized_copy(other.start_ + Size(), other.finish_, finish_);
                 } else {
                     iterator new_finish{std::copy(other.start_, other.finish_, start_)};
                     std::destroy(start_ + other.Size(), finish_);
@@ -199,8 +201,9 @@ public:
         // 1. capacity 足够
         if (end_of_storage_ - finish_ > 0) {
             if (pos != finish_) {
-                std::construct_at(finish_, std::move(*(finish_ - 1)));  // 最后一个元素右移, 腾出一个空位
-                std::move_backward(pos, finish_ - 1, finish_);          // 移动剩余元素
+                std::construct_at(finish_,
+                                  std::move(*(finish_ - 1)));   // 最后一个元素右移, 腾出一个空位
+                std::move_backward(pos, finish_ - 1, finish_);  // 移动剩余元素
                 *pos = std::move(val);
                 ++finish_;
                 return pos;
@@ -252,7 +255,8 @@ public:
             // NOTE: MSVC: * 2; GCC: * 1.5
             size_type new_size = std::max(2 * Size(), Size() + n);
             iterator new_start{Alloc::Allocate(new_size)};
-            iterator new_finish{std::uninitialized_move(start_, pos, new_start)};  // 1. 移动左边部分
+            iterator new_finish{
+                std::uninitialized_move(start_, pos, new_start)};  // 1. 移动左边部分
             iterator ret{new_finish};
             new_finish = std::uninitialized_fill_n(new_finish, n, val);      // 2. 填充中间部分
             new_finish = std::uninitialized_move(pos, finish_, new_finish);  // 3. 移动右边部分
@@ -284,8 +288,10 @@ public:
         return first;
     }
 
+    // push_back 左值重载
     void PushBack(value_type const& val) { Insert(finish_, val); }
 
+    // push_back 右值重载
     void PushBack(value_type&& val) { Insert(finish_, std::move(val)); }
 
     void PopBack() { finish_ = Erase(finish_ - 1); }

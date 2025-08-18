@@ -11,10 +11,12 @@ public:
     using size_type = std::size_t;
     using difference_type = std::ptrdiff_t;
     using value_type = T;
-    using pointer = T*;
+    using pointer = value_type*;
 
 public:
-    static pointer Allocate(size_type n) { return static_cast<pointer>(operator new(n * sizeof(value_type))); }
+    static pointer Allocate(size_type n) {
+        return static_cast<pointer>(operator new(n * sizeof(value_type)));
+    }
     static void Deallocate(pointer p) { operator delete(p); }
 };
 
