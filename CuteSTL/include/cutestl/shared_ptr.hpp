@@ -24,18 +24,16 @@ struct ControlBlock {
 
     // 构造函数，接收一个指针和对应的删除器
     template <typename U, typename Deleter>
-    ControlBlock(U* p, Deleter d) {  // NOTE: 只需要 p 的类型
+    ControlBlock(U*, Deleter d) {  // NOTE: 指针类型 U 后面用于转换
         // 使用 lambda 捕获具体的删除器，并将其包装进 std::function
-        // 这样，无论原始删除器是函数指针还是带状态的函数对象，都可以被正确存储和调用
+        // 无论原始删除器是函数指针还是带状态的函数对象，都可以被正确存储和调用
         deleter_ = [deleter = std::move(d)](void* ptr_to_delete) {
-            deleter(static_cast<U*>(ptr_to_delete));
+            deleter(static_cast<U*>(ptr_to_delete));  // NOTE: 需要强转回原来的类型才能正确析构!
         };
     }
-
-    virtual ~ControlBlock() = default;
 };
 
-// 默认删除器 (重载括号运算符 -> 变成可调用对象)
+// 默认删除器
 template <typename T>
 struct DefaultDeleter {
     void operator()(T* ptr) const { delete ptr; }
@@ -182,5 +180,3 @@ private:
     T* p_{nullptr};
     ControlBlock* cb_{nullptr};
 };
-
-int main() {}

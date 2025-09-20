@@ -9,7 +9,7 @@
 namespace cutestl {
 
 // 前向声明
-template <typename T, typename Deleter = std::default_delete<T>>
+template <typename T, typename Deleter = std::default_delete<T>>  // 默认参数, 下面就不需要了
 class UniquePtr;
 
 template <typename T, typename Deleter>

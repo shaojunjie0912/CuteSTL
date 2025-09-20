@@ -25,7 +25,7 @@ private:
     class FuncBase {
     public:
         virtual RT Call(Args... args) = 0;                    // 类型擦除后的统一接口
-        virtual std::unique_ptr<FuncBase> Clone() const = 0;  // 原型模式，克隆当前函数对象
+        virtual std::unique_ptr<FuncBase> Clone() const = 0;  // 值语义, 克隆当前函数对象
         virtual ~FuncBase() = default;
     };
 
